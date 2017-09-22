@@ -26,6 +26,7 @@
     var qrCodeManager = new QRCodeManager('qrcode');
 
 
+
     cameraManager.onframe = function() {
       // There is a frame in the camera, what should we do with it?
  
@@ -48,6 +49,8 @@
 
     var client = new QRClient();
 
+    var imageDecoderWorker = new Worker('scripts/jsqrcode/qrworker.js')
+
     var self = this;
 
     this.currentUrl = undefined;
@@ -56,6 +59,25 @@
     this.detectQRCode = function(imageData, callback) {
       callback = callback || function() {};
 
+      imageDecoderWorker.postMessage(imageData);
+
+      imageDecoderWorker.onmessage = function(result) {
+        var url = result.data;
+        if(url !== undefined) {
+          self.currentUrl = url;
+        }
+        callback(url);
+      };
+
+      imageDecoderWorker.onerror = function (error) {
+        function WorkerException(message) {
+          this.name ="WorkerException";
+          this.message = message;
+        };
+        throw new WorkerException("Decoder error");
+        callback(undefined);
+      };
+      
       client.decode(imageData, function(result) {
         if(result !== undefined) {
           self.currentUrl = result;
